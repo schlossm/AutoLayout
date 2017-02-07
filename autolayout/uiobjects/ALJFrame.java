@@ -32,9 +32,12 @@ public class ALJFrame extends JFrame implements ComponentListener
 	@Override
 	public void componentResized(ComponentEvent e)
 	{
+		if (!this.isVisible()) return;
+		getContentPane().revalidate();
+		getContentPane().repaint();
 		for (Component component : getContentPane().getComponents())
 		{
-			component.setBounds(0, component.getBounds().y, getWidth(), component.getPreferredSize().height);
+			component.setBounds(0, component.getBounds().y, getContentPane().getWidth(), getContentPane().getHeight() - component.getBounds().y);
 			if (component instanceof ALJPanel)
 			{
 				((ALJPanel)component).layoutSubviews();
@@ -50,7 +53,21 @@ public class ALJFrame extends JFrame implements ComponentListener
 	public void componentMoved(ComponentEvent e) { }
 
 	@Override
-	public void componentShown(ComponentEvent e) { }
+	public void componentShown(ComponentEvent e)
+	{
+		for (Component component : getContentPane().getComponents())
+		{
+			component.setBounds(0, component.getBounds().y, getContentPane().getWidth(), getContentPane().getHeight() - component.getBounds().y);
+			if (component instanceof ALJPanel)
+			{
+				((ALJPanel)component).layoutSubviews();
+			}
+			else if (component instanceof JPanel)
+			{
+				((ComponentListener)component).componentResized(null);
+			}
+		}
+	}
 
 	@Override
 	public void componentHidden(ComponentEvent e) { }

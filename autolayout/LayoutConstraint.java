@@ -24,7 +24,7 @@ public class LayoutConstraint
 	@Override
 	public String toString()
 	{
-		return getClassAndHashCode(viewOne) + "." + attributeOne.toString() + relation.toString() + (viewTwo != null ? getClassAndHashCode(viewTwo) : "null") + "." + attributeTwo.toString() + " * " + multiplier + " + " + constant + "\n";
+		return getClassAndHashCode(viewOne) + "." + attributeOne.toString() + relation.toString() + (viewTwo != null ? getClassAndHashCode(viewTwo) : "null") + "." + attributeTwo.toString() + " * " + multiplier + " + " + constant;
 	}
 
 	public LayoutConstraint(Component view1, LayoutAttribute attr1, LayoutRelation relation, Component view2, LayoutAttribute attr2, double multiplier, int constant)
