@@ -1,7 +1,7 @@
 # AutoLayout
 A fully fledged auto layout engine for Java's Swing platform
 
-Current status: **Beta 1.0** - ***initial release***
+Current status: **Beta 1.1** - ***The rewrite release***
 
 Designed to be used in place of Swing's `LayoutManager` and `LayoutManager2` classes.  AutoLayout provides full scale custom layouts with built in automated resizing.
 
@@ -13,7 +13,7 @@ Resizing on macOS is slightly laggy.  That's Swings own doing and nothing I can 
 * All constraints are processed at each resizing.  I have not yet implemented efficient resizing of constraints.
 	* As a result, the `hasBeenProcessed` attribute of `LayoutConstraint` is set, but never read.  This will change once I implement efficient constraint processing.
 * `LayoutEngine` does not respect the `compressionResistanceWidth` and `compressionResistanceHeight` of `ALJPanel`.  This is intentional to place priority on the layout engine working properly before diving into resizing different items at different times.
-
+	
 * Error checking is not fully completed.  `LayoutEngine` does not yet print out the things I want it to, and in edge cases it sometimes misses errors in layout constraining.
 * `LayoutEngine` cannot yet recover itself.  The default behavior is telling you there's an error, and then either ending constraint processing or, if the error is great enough, terminating execution.  This feature is coming.
 
@@ -38,7 +38,7 @@ All you need to do is use an ALJPanel instance.  This can be the base class, or 
 ##Disclaimers
 This project is in beta.  It is not intended for production builds, unless you have had major experience developing on iOS, and know your way around the layout engine.
 
-If you wish to contribute to this project, feel free to fork and pull request, and get in contact with me.  This is a living, breathing project and will change as needs change.  My goal in the end is to mimic as much as possible of the NSLayoutEngine.
+If you wish to contribute to this project, feel free to fork, pull request, and get in contact with me.  This is a living, breathing project and will change as needs change.  My goal in the end is to mimic as much as possible of the NSLayoutEngine.
 
 
 
