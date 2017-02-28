@@ -17,38 +17,6 @@ public class LayoutEngine
 
 	public void processConstraintsIn(Constrainable view)
 	{
-		if (view instanceof Container)
-		{
-			final LayoutConstraint[] allConstraints = view.allConstraints();
-			Map<Component, ArrayList<LayoutConstraint>> map = new HashMap<>();
-
-			//Build Map
-			for (LayoutConstraint constraint : allConstraints)
-			{
-				ArrayList<LayoutConstraint> constraintsForView = map.get(constraint.viewOne);
-				if (constraintsForView == null)
-				{
-					constraintsForView = new ArrayList<>();
-				}
-				constraintsForView.add(constraint);
-				map.put(constraint.viewOne, constraintsForView);
-			}
-
-			//Check for any views with no constraints
-			for (Component subComp : ((Container)view).getComponents())
-			{
-				if (map.get(subComp) == null)
-				{
-					String[] classes = subComp.getClass().toString().substring(6).split(Pattern.quote("."));
-					System.out.println(classes[max(0, classes.length - 1)] + ":" + System.identityHashCode(subComp) + " does not have any constraints.  LayoutEngine does not know how to render this view on screen.");
-				}
-			}
-
-			process(map, ((Container)view));
-			return;
-		}
-
-
 		JComponent component;
 		try
 		{
@@ -62,7 +30,7 @@ public class LayoutEngine
 			return;
 		}
 
-		final LayoutConstraint[] allConstraints = view.allConstraints();
+		final LayoutConstraint[] allConstraints = view.allConstraints().clone();
 		Map<Component, ArrayList<LayoutConstraint>> map = new HashMap<>();
 
 		//Build Map
@@ -92,19 +60,22 @@ public class LayoutEngine
 
 	private void process(Map<Component, ArrayList<LayoutConstraint>> map, Component parent)
 	{
+		int height = 0;
+		int width = 0;
+
 		while (map.size() != 0)
 		{
 			Component viewToConstrain = map.keySet().iterator().next();
 			ArrayList<LayoutConstraint> constraints = map.get(viewToConstrain);
-
 			sort(constraints, viewToConstrain);
 
 			constrainPreferredSizeIfNeeded(constraints, viewToConstrain);
 
-			ArrayList<LayoutAttribute> attributesSatisfied = new ArrayList<>();
+			ArrayList<LayoutAttribute[]> attributesSatisfied = new ArrayList<>();
 
-			for (LayoutConstraint constraint : constraints)
+			while (!constraints.isEmpty())
 			{
+				LayoutConstraint constraint = constraints.iterator().next();
 				//MARK: - Perform routine checks to make sure an illegal constraint isn't going to be created
 				if (constraint.attributeOne != LayoutAttribute.width && constraint.attributeOne != LayoutAttribute.height)
 				{
@@ -127,25 +98,112 @@ public class LayoutEngine
 				{
 					processConstraint(constraint, attributesSatisfied);
 				}
-				constraint.hasBeenProcessed = true;
+
+				if (constraint.hasBeenProcessed)
+				{
+					if (constraint.viewOne.getY() + constraint.viewOne.getHeight() > height)
+					{
+						height = constraint.viewOne.getY() + constraint.viewOne.getHeight();
+					}
+					if (constraint.viewOne.getX() + constraint.viewOne.getWidth() > width)
+					{
+						width = constraint.viewOne.getX() + constraint.viewOne.getWidth();
+					}
+					constraints.remove(constraint);
+				}
 			}
-			viewToConstrain.setPreferredSize(new Dimension(viewToConstrain.getBounds().width, viewToConstrain.getBounds().height));
 			map.remove(viewToConstrain);
 		}
+
+		((Constrainable) parent).setCalculatedHeight(height);
+		((Constrainable) parent).setCalculatedWidth(width);
 	}
 
-	private void processConstraintOnParent(LayoutConstraint constraint, ArrayList<LayoutAttribute> attributesSatisfied, Component parent)
+	private void processConstraintOnParent(LayoutConstraint constraint, ArrayList<LayoutAttribute[]> attributesSatisfied, Component parent)
 	{
+		constraint.hasBeenProcessed = true;
 		switch (constraint.attributeOne)
 		{
-			case top:
+			case leading:
 			{
-				if ((attributesSatisfied.contains(LayoutAttribute.bottom) || attributesSatisfied.contains(LayoutAttribute.centerY)) && attributesSatisfied.contains(LayoutAttribute.height))
+				if (constraint.relation != LayoutRelation.equal)
 				{
-					System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  You have already specified (.bottom or .centerY) and .height.  Setting .top would break the constraints");
+					System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  You must set the relation to .equal");
 					break;
 				}
 
+				int leading = 0;
+				switch (constraint.attributeTwo)
+				{
+					case leading:
+						leading = constraint.constant;
+						break;
+
+					case centerX:
+						leading = (int) (parent.getBounds().getWidth() / 2.0 * constraint.multiplier) + constraint.constant;
+						break;
+
+					case trailing:
+						leading = (int) (parent.getBounds().getWidth() * constraint.multiplier) + constraint.constant;
+						break;
+
+					default:
+						System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  .leading can only be constrained to .leading, .centerX, or .trailing");
+						break;
+				}
+				constraint.viewOne.setBounds(leading, constraint.viewOne.getBounds().y, constraint.viewOne.getBounds().width, constraint.viewOne.getBounds().height);
+				attributesSatisfied.add(new LayoutAttribute[] {LayoutAttribute.leading, constraint.attributeTwo});
+				break;
+			}
+
+			case trailing:
+			{
+				if (constraint.relation != LayoutRelation.equal)
+				{
+					System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  You must set the relation to .equal");
+					break;
+				}
+
+				int trailing = 0;
+				switch (constraint.attributeTwo)
+				{
+					case leading:
+						trailing = constraint.constant;
+						break;
+
+					case centerX:
+						trailing = (int) (parent.getBounds().getWidth() / 2.0 * constraint.multiplier) + constraint.constant;
+						break;
+
+					case trailing:
+						trailing = (int) (parent.getBounds().getWidth() * constraint.multiplier) + constraint.constant;
+						break;
+
+					default:
+						System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  .trailing can only be constrained to .leading, .centerX, or .trailing");
+						break;
+				}
+
+				if (trailing - constraint.viewOne.getBounds().x < 0)
+				{
+					System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  The width is negative.");
+					break;
+				}
+
+				if (!contains(attributesSatisfied, LayoutAttribute.leading))
+				{
+					constraint.viewOne.setBounds(trailing, constraint.viewOne.getBounds().y, constraint.viewOne.getWidth(), constraint.viewOne.getBounds().height);
+				}
+				else
+				{
+					constraint.viewOne.setBounds(constraint.viewOne.getBounds().x, constraint.viewOne.getBounds().y, trailing - constraint.viewOne.getBounds().x, constraint.viewOne.getBounds().height);
+				}
+				attributesSatisfied.add(new LayoutAttribute[] {LayoutAttribute.trailing, constraint.attributeTwo});
+				break;
+			}
+
+			case top:
+			{
 				if (constraint.relation != LayoutRelation.equal)
 				{
 					System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  You must set the relation to .equal");
@@ -163,13 +221,13 @@ public class LayoutEngine
 
 					case centerY:
 					{
-						top = (int) (parent.getPreferredSize().getHeight() / 2.0 * constraint.multiplier) + constraint.constant;
+						top = (int) (parent.getBounds().getHeight() / 2.0 * constraint.multiplier) + constraint.constant;
 						break;
 					}
 
 					case bottom:
 					{
-						top = (int) (parent.getPreferredSize().getHeight() * constraint.multiplier) + constraint.constant;
+						top = (int) (parent.getBounds().getHeight() * constraint.multiplier) + constraint.constant;
 						break;
 					}
 
@@ -181,13 +239,13 @@ public class LayoutEngine
 				}
 
 				constraint.viewOne.setBounds(constraint.viewOne.getBounds().x, top, constraint.viewOne.getBounds().width, constraint.viewOne.getBounds().height);
-				attributesSatisfied.add(LayoutAttribute.top);
+				attributesSatisfied.add(new LayoutAttribute[] {LayoutAttribute.top, constraint.attributeTwo});
 				break;
 			}
 
 			case bottom:
 			{
-				if ((attributesSatisfied.contains(LayoutAttribute.top) || attributesSatisfied.contains(LayoutAttribute.centerY)) && attributesSatisfied.contains(LayoutAttribute.height))
+				if ((contains(attributesSatisfied, LayoutAttribute.top) || contains(attributesSatisfied, LayoutAttribute.centerY)) && contains(attributesSatisfied, LayoutAttribute.height))
 				{
 					System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  You have already specified (.top or .centerY) and .height.  Setting .bottom would break the constraints");
 					break;
@@ -225,16 +283,24 @@ public class LayoutEngine
 					break;
 				}
 
-				constraint.viewOne.setBounds(constraint.viewOne.getBounds().x, constraint.viewOne.getBounds().y, constraint.viewOne.getBounds().width, bottom - constraint.viewOne.getBounds().y);
-				attributesSatisfied.add(LayoutAttribute.bottom);
+				if (!contains(attributesSatisfied, LayoutAttribute.top))
+				{
+					constraint.viewOne.setBounds(constraint.viewOne.getBounds().x, bottom, constraint.viewOne.getWidth(), constraint.viewOne.getBounds().height);
+				}
+				else
+				{
+					constraint.viewOne.setBounds(constraint.viewOne.getBounds().x, constraint.viewOne.getBounds().y, constraint.viewOne.getBounds().width, bottom - constraint.viewOne.getBounds().y);
+				}
+
+				attributesSatisfied.add(new LayoutAttribute[] {LayoutAttribute.bottom, constraint.attributeTwo});
 				break;
 			}
 
-			case leading:
+			case centerX:
 			{
-				if ((attributesSatisfied.contains(LayoutAttribute.trailing) || attributesSatisfied.contains(LayoutAttribute.centerX)) && attributesSatisfied.contains(LayoutAttribute.width))
+				if (contains(attributesSatisfied, LayoutAttribute.trailing) && contains(attributesSatisfied, LayoutAttribute.leading))
 				{
-					System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  You have already specified (.trailing or .centerX) and .width.  Setting .leading would break the constraints");
+					System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  You have already specified .leading and .trailing.  Setting .centerX would break the constraints");
 					break;
 				}
 
@@ -244,81 +310,101 @@ public class LayoutEngine
 					break;
 				}
 
-				int leading = 0;
+				int centerX = 0;
 				switch (constraint.attributeTwo)
 				{
 					case leading:
-						leading = constraint.constant;
+						centerX = constraint.constant;
 						break;
 
 					case centerX:
-						leading = (int) (parent.getBounds().getWidth() / 2.0 * constraint.multiplier) + constraint.constant;
+						centerX = (int) (parent.getBounds().getWidth() / 2.0 * constraint.multiplier) + constraint.constant;
 						break;
 
 					case trailing:
-						leading = (int) (parent.getBounds().getWidth() * constraint.multiplier) + constraint.constant;
+						centerX = (int) (parent.getBounds().getWidth() * constraint.multiplier) + constraint.constant;
 						break;
 
 					default:
-						System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  .leading can only be constrained to .leading, .centerX, or .trailing");
+						System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  .centerX can only be constrained to .leading, .centerX, or .trailing");
 						break;
 				}
 
-				constraint.viewOne.setBounds(leading, constraint.viewOne.getBounds().y, constraint.viewOne.getBounds().width, constraint.viewOne.getBounds().height);
-				attributesSatisfied.add(LayoutAttribute.leading);
-				break;
-			}
-
-			case trailing:
-			{
-				if ((attributesSatisfied.contains(LayoutAttribute.leading) || attributesSatisfied.contains(LayoutAttribute.centerX)) && attributesSatisfied.contains(LayoutAttribute.width))
-				{
-					System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  You have already specified (.leading or .centerX) and .width.  Setting .trailing would break the constraints");
-					break;
-				}
-
-				if (constraint.relation != LayoutRelation.equal)
-				{
-					System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  You must set the relation to .equal");
-					break;
-				}
-
-				int trailing = 0;
-				switch (constraint.attributeTwo)
-				{
-					case leading:
-						trailing = constraint.constant;
-						break;
-
-					case centerX:
-						trailing = (int) (parent.getPreferredSize().getWidth() / 2.0 * constraint.multiplier) + constraint.constant;
-						break;
-
-					case trailing:
-						trailing = (int) (parent.getPreferredSize().getWidth() * constraint.multiplier) + constraint.constant;
-						break;
-
-					default:
-						System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  .trailing can only be constrained to .leading, .centerX, or .trailing");
-						break;
-				}
-
-				if (trailing - constraint.viewOne.getBounds().x < 0)
+				if (centerX < 0 || (centerX - constraint.viewOne.getBounds().x) * 2 < 0)
 				{
 					System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  The width is negative.");
 					break;
 				}
 
-				constraint.viewOne.setBounds(constraint.viewOne.getBounds().x, constraint.viewOne.getBounds().y, trailing - constraint.viewOne.getBounds().x, constraint.viewOne.getBounds().height);
-				attributesSatisfied.add(LayoutAttribute.trailing);
+				if (contains(attributesSatisfied, LayoutAttribute.leading))
+				{
+					constraint.viewOne.setBounds(constraint.viewOne.getBounds().x, constraint.viewOne.getBounds().y, (centerX - constraint.viewOne.getBounds().x) * 2, constraint.viewOne.getBounds().height);
+				}
+				else if (contains(attributesSatisfied, LayoutAttribute.width))
+				{
+					constraint.viewOne.setBounds(centerX - (constraint.viewOne.getBounds().width/2), constraint.viewOne.getBounds().y, constraint.viewOne.getBounds().width, constraint.viewOne.getBounds().height);
+				}
+				attributesSatisfied.add(new LayoutAttribute[] {LayoutAttribute.centerX, constraint.attributeTwo});
+				break;
+			}
+
+			case centerY:
+			{
+				if (((contains(attributesSatisfied, LayoutAttribute.top) || contains(attributesSatisfied, LayoutAttribute.bottom)) && contains(attributesSatisfied, LayoutAttribute.height)) || (contains(attributesSatisfied, LayoutAttribute.top) && contains(attributesSatisfied, LayoutAttribute.bottom)))
+				{
+					System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  You have already specified ((.top or .bottom) and .height) or (.top and .bottom).  Setting .centerY would break the constraints");
+					break;
+				}
+
+				if (constraint.relation != LayoutRelation.equal)
+				{
+					System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  You must set the relation to .equal");
+					break;
+				}
+
+				int centerY = 0;
+				switch (constraint.attributeTwo)
+				{
+					case top:
+						centerY = constraint.constant;
+						break;
+
+					case centerY:
+						centerY = (int) (parent.getBounds().getHeight() / 2.0 * constraint.multiplier) + constraint.constant;
+						break;
+
+					case bottom:
+						centerY = (int) (parent.getBounds().getHeight() * constraint.multiplier) + constraint.constant;
+						break;
+
+					default:
+						System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  .centerY can only be constrained to .top, .centerY, or .bottom");
+						break;
+				}
+
+				if (centerY < 0 || (centerY - constraint.viewOne.getBounds().y) * 2 < 0)
+				{
+					System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  The width is negative.");
+					break;
+				}
+
+				if (contains(attributesSatisfied, LayoutAttribute.leading))
+				{
+					constraint.viewOne.setBounds(constraint.viewOne.getBounds().x, constraint.viewOne.getBounds().y, constraint.viewOne.getBounds().width, (centerY - constraint.viewOne.getBounds().y) * 2);
+				}
+				else if (contains(attributesSatisfied, LayoutAttribute.width))
+				{
+					constraint.viewOne.setBounds(constraint.viewOne.getBounds().x, centerY - (constraint.viewOne.getBounds().height/2), constraint.viewOne.getBounds().width, constraint.viewOne.getBounds().height);
+				}
+				attributesSatisfied.add(new LayoutAttribute[] {LayoutAttribute.centerX, constraint.attributeTwo});
 				break;
 			}
 
 			case width:
 			{
-				if ((attributesSatisfied.contains(LayoutAttribute.leading) || attributesSatisfied.contains(LayoutAttribute.centerX)) && attributesSatisfied.contains(LayoutAttribute.trailing))
+				if (contains(attributesSatisfied, LayoutAttribute.leading) && contains(attributesSatisfied, LayoutAttribute.trailing))
 				{
-					System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  You have already specified (.leading or .centerX) and .trailing.  Setting .width would break the constraints");
+					System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  You have already specified .leading and .trailing.  Setting .width would break these constraints");
 					break;
 				}
 
@@ -326,7 +412,7 @@ public class LayoutEngine
 				switch (constraint.attributeTwo)
 				{
 					case width:
-						width = (int)(parent.getPreferredSize().getWidth() * constraint.multiplier) + constraint.constant;
+						width = (int)(parent.getBounds().getWidth() * constraint.multiplier) + constraint.constant;
 
 						if (constraint.relation == LayoutRelation.greaterThanOrEqual)
 						{
@@ -350,13 +436,13 @@ public class LayoutEngine
 				}
 
 				constraint.viewOne.setBounds(constraint.viewOne.getBounds().x, constraint.viewOne.getBounds().y, width, constraint.viewOne.getBounds().height);
-				attributesSatisfied.add(LayoutAttribute.width);
+				attributesSatisfied.add(new LayoutAttribute[] {LayoutAttribute.width, constraint.attributeTwo});
 				break;
 			}
 
 			case height:
 			{
-				if ((attributesSatisfied.contains(LayoutAttribute.top) || attributesSatisfied.contains(LayoutAttribute.centerY)) && attributesSatisfied.contains(LayoutAttribute.bottom))
+				if ((contains(attributesSatisfied, LayoutAttribute.top) || contains(attributesSatisfied, LayoutAttribute.centerY)) && contains(attributesSatisfied, LayoutAttribute.bottom))
 				{
 					System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  You have already specified (.top or .centerY) and .bottom.  Setting .height would break the constraints");
 					break;
@@ -366,7 +452,7 @@ public class LayoutEngine
 				switch (constraint.attributeTwo)
 				{
 					case height:
-						height = (int)(parent.getPreferredSize().getHeight() * constraint.multiplier) + constraint.constant;
+						height = (int)(parent.getBounds().getHeight() * constraint.multiplier) + constraint.constant;
 						if (constraint.relation == LayoutRelation.greaterThanOrEqual)
 						{
 							height = max(height, constraint.viewOne.getPreferredSize().height);
@@ -389,123 +475,20 @@ public class LayoutEngine
 				}
 
 				constraint.viewOne.setBounds(constraint.viewOne.getBounds().x, constraint.viewOne.getBounds().y, constraint.viewOne.getBounds().width, height);
-				attributesSatisfied.add(LayoutAttribute.height);
-				break;
-			}
-
-			case centerX:
-			{
-				if (((attributesSatisfied.contains(LayoutAttribute.trailing) || attributesSatisfied.contains(LayoutAttribute.leading)) && attributesSatisfied.contains(LayoutAttribute.width)) || (attributesSatisfied.contains(LayoutAttribute.trailing) && attributesSatisfied.contains(LayoutAttribute.leading)))
-				{
-					System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  You have already specified ((.leading or .trailing) and .width) or (.leading and .trailing).  Setting .centerX would break the constraints");
-					break;
-				}
-
-				if (constraint.relation != LayoutRelation.equal)
-				{
-					System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  You must set the relation to .equal");
-					break;
-				}
-
-				int centerX = 0;
-				switch (constraint.attributeTwo)
-				{
-					case leading:
-						centerX = constraint.constant;
-						break;
-
-					case centerX:
-						centerX = (int) (parent.getPreferredSize().getWidth() / 2.0 * constraint.multiplier) + constraint.constant;
-						break;
-
-					case trailing:
-						centerX = (int) (parent.getPreferredSize().getWidth() * constraint.multiplier) + constraint.constant;
-						break;
-
-					default:
-						System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  .centerX can only be constrained to .leading, .centerX, or .trailing");
-						break;
-				}
-
-				if (centerX < 0 || (centerX - constraint.viewOne.getBounds().x) * 2 < 0)
-				{
-					System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  The width is negative.");
-					break;
-				}
-
-				if (attributesSatisfied.contains(LayoutAttribute.leading))
-				{
-					constraint.viewOne.setBounds(constraint.viewOne.getBounds().x, constraint.viewOne.getBounds().y, (centerX - constraint.viewOne.getBounds().x) * 2, constraint.viewOne.getBounds().height);
-				}
-				else if (attributesSatisfied.contains(LayoutAttribute.width))
-				{
-					constraint.viewOne.setBounds(centerX - (constraint.viewOne.getBounds().width/2), constraint.viewOne.getBounds().y, constraint.viewOne.getBounds().width, constraint.viewOne.getBounds().height);
-				}
-				attributesSatisfied.add(LayoutAttribute.centerX);
-				break;
-			}
-
-			case centerY:
-			{
-				if (((attributesSatisfied.contains(LayoutAttribute.top) || attributesSatisfied.contains(LayoutAttribute.bottom)) && attributesSatisfied.contains(LayoutAttribute.height)) || (attributesSatisfied.contains(LayoutAttribute.top) && attributesSatisfied.contains(LayoutAttribute.bottom)))
-				{
-					System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  You have already specified ((.top or .bottom) and .height) or (.top and .bottom).  Setting .centerY would break the constraints");
-					break;
-				}
-
-				if (constraint.relation != LayoutRelation.equal)
-				{
-					System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  You must set the relation to .equal");
-					break;
-				}
-
-				int centerY = 0;
-				switch (constraint.attributeTwo)
-				{
-					case top:
-						centerY = constraint.constant;
-						break;
-
-					case centerY:
-						centerY = (int) (parent.getPreferredSize().getHeight() / 2.0 * constraint.multiplier) + constraint.constant;
-						break;
-
-					case bottom:
-						centerY = (int) (parent.getPreferredSize().getHeight() * constraint.multiplier) + constraint.constant;
-						break;
-
-					default:
-						System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  .centerY can only be constrained to .top, .centerY, or .bottom");
-						break;
-				}
-
-				if (centerY < 0 || (centerY - constraint.viewOne.getBounds().y) * 2 < 0)
-				{
-					System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  The width is negative.");
-					break;
-				}
-
-				if (attributesSatisfied.contains(LayoutAttribute.leading))
-				{
-					constraint.viewOne.setBounds(constraint.viewOne.getBounds().x, constraint.viewOne.getBounds().y, constraint.viewOne.getBounds().width, (centerY - constraint.viewOne.getBounds().y) * 2);
-				}
-				else if (attributesSatisfied.contains(LayoutAttribute.width))
-				{
-					constraint.viewOne.setBounds(constraint.viewOne.getBounds().x, centerY - (constraint.viewOne.getBounds().height/2), constraint.viewOne.getBounds().width, constraint.viewOne.getBounds().height);
-				}
-				attributesSatisfied.add(LayoutAttribute.centerX);
+				attributesSatisfied.add(new LayoutAttribute[] {LayoutAttribute.height, constraint.attributeTwo});
 				break;
 			}
 		}
 	}
 
-	private void processConstraint(LayoutConstraint constraint, ArrayList<LayoutAttribute> attributesSatisfied)
+	private void processConstraint(LayoutConstraint constraint, ArrayList<LayoutAttribute[]> attributesSatisfied)
 	{
+		constraint.hasBeenProcessed = true;
 		switch (constraint.attributeOne)
 		{
 			case top:
 			{
-				if ((attributesSatisfied.contains(LayoutAttribute.bottom) || attributesSatisfied.contains(LayoutAttribute.centerY)) && attributesSatisfied.contains(LayoutAttribute.height))
+				if ((contains(attributesSatisfied, LayoutAttribute.bottom) || contains(attributesSatisfied, LayoutAttribute.centerY)) && contains(attributesSatisfied, LayoutAttribute.height))
 				{
 					System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  You have already specified (.bottom or .centerY) and .height.  Setting .top would break the constraints");
 					break;
@@ -528,13 +511,13 @@ public class LayoutEngine
 
 					case centerY:
 					{
-						top = constraint.viewTwo.getBounds().y + (int)(constraint.viewTwo.getPreferredSize().getHeight() / 2.0 * constraint.multiplier) + constraint.constant;
+						top = constraint.viewTwo.getBounds().y + (int)(constraint.viewTwo.getBounds().getHeight() / 2.0 * constraint.multiplier) + constraint.constant;
 						break;
 					}
 
 					case bottom:
 					{
-						top = constraint.viewTwo.getBounds().y + (int)(constraint.viewTwo.getPreferredSize().getHeight() * constraint.multiplier) + constraint.constant;
+						top = constraint.viewTwo.getBounds().y + (int)(constraint.viewTwo.getBounds().getHeight() * constraint.multiplier) + constraint.constant;
 						break;
 					}
 
@@ -546,13 +529,13 @@ public class LayoutEngine
 				}
 
 				constraint.viewOne.setBounds(constraint.viewOne.getBounds().x, top, constraint.viewOne.getBounds().width, constraint.viewOne.getBounds().height);
-				attributesSatisfied.add(LayoutAttribute.top);
+				attributesSatisfied.add(new LayoutAttribute[] {LayoutAttribute.top, constraint.attributeTwo});
 				break;
 			}
 
 			case bottom:
 			{
-				if ((attributesSatisfied.contains(LayoutAttribute.top) || attributesSatisfied.contains(LayoutAttribute.centerY)) && attributesSatisfied.contains(LayoutAttribute.height))
+				if ((contains(attributesSatisfied, LayoutAttribute.top) || contains(attributesSatisfied, LayoutAttribute.centerX)) && contains(attributesSatisfied, LayoutAttribute.height))
 				{
 					System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  You have already specified (.top or .centerY) and .height.  Setting .bottom would break the constraints");
 					break;
@@ -572,11 +555,11 @@ public class LayoutEngine
 						break;
 
 					case centerY:
-						bottom = constraint.viewTwo.getBounds().y + (int)(constraint.viewTwo.getPreferredSize().getHeight() / 2.0 * constraint.multiplier) + constraint.constant;
+						bottom = constraint.viewTwo.getBounds().y + (int)(constraint.viewTwo.getBounds().getHeight() / 2.0 * constraint.multiplier) + constraint.constant;
 						break;
 
 					case bottom:
-						bottom = constraint.viewTwo.getBounds().y + (int)(constraint.viewTwo.getPreferredSize().getHeight() * constraint.multiplier) + constraint.constant;
+						bottom = constraint.viewTwo.getBounds().y + (int)(constraint.viewTwo.getBounds().getHeight() * constraint.multiplier) + constraint.constant;
 						break;
 
 					default:
@@ -591,13 +574,13 @@ public class LayoutEngine
 				}
 
 				constraint.viewOne.setBounds(constraint.viewOne.getBounds().x, constraint.viewOne.getBounds().y, constraint.viewOne.getBounds().width, bottom - constraint.viewOne.getBounds().y);
-				attributesSatisfied.add(LayoutAttribute.bottom);
+				attributesSatisfied.add(new LayoutAttribute[] {LayoutAttribute.bottom, constraint.attributeTwo});
 				break;
 			}
 
 			case leading:
 			{
-				if ((attributesSatisfied.contains(LayoutAttribute.trailing) || attributesSatisfied.contains(LayoutAttribute.centerX)) && attributesSatisfied.contains(LayoutAttribute.width))
+				if ((contains(attributesSatisfied, LayoutAttribute.trailing) || contains(attributesSatisfied, LayoutAttribute.centerX)) && contains(attributesSatisfied, LayoutAttribute.width))
 				{
 					System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  You have already specified (.trailing or .centerX) and .width.  Setting .leading would break the constraints");
 					break;
@@ -617,11 +600,11 @@ public class LayoutEngine
 						break;
 
 					case centerX:
-						leading = constraint.viewTwo.getBounds().x + (int)(constraint.viewTwo.getPreferredSize().getWidth() / 2.0 * constraint.multiplier) + constraint.constant;
+						leading = constraint.viewTwo.getBounds().x + (int)(constraint.viewTwo.getBounds().getWidth() / 2.0 * constraint.multiplier) + constraint.constant;
 						break;
 
 					case trailing:
-						leading = constraint.viewTwo.getBounds().x + (int)(constraint.viewTwo.getPreferredSize().getWidth() * constraint.multiplier) + constraint.constant;
+						leading = constraint.viewTwo.getBounds().x + (int)(constraint.viewTwo.getBounds().getWidth() * constraint.multiplier) + constraint.constant;
 						break;
 
 					default:
@@ -630,13 +613,13 @@ public class LayoutEngine
 				}
 
 				constraint.viewOne.setBounds(leading, constraint.viewOne.getBounds().y, constraint.viewOne.getBounds().width, constraint.viewOne.getBounds().height);
-				attributesSatisfied.add(LayoutAttribute.leading);
+				attributesSatisfied.add(new LayoutAttribute[] {LayoutAttribute.leading, constraint.attributeTwo});
 				break;
 			}
 
 			case trailing:
 			{
-				if ((attributesSatisfied.contains(LayoutAttribute.leading) || attributesSatisfied.contains(LayoutAttribute.centerX)) && attributesSatisfied.contains(LayoutAttribute.width))
+				if ((contains(attributesSatisfied, LayoutAttribute.leading) || contains(attributesSatisfied, LayoutAttribute.centerX)) && contains(attributesSatisfied, LayoutAttribute.width))
 				{
 					System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  You have already specified (.leading or .centerX) and .width.  Setting .trailing would break the constraints");
 					break;
@@ -652,15 +635,15 @@ public class LayoutEngine
 				switch (constraint.attributeTwo)
 				{
 					case leading:
-						trailing = constraint.constant;
+						trailing = (int)(constraint.viewTwo.getBounds().getX() * constraint.multiplier) + constraint.constant;
 						break;
 
 					case centerX:
-						trailing = constraint.viewTwo.getBounds().x + (int)(constraint.viewTwo.getPreferredSize().getWidth() / 2.0 * constraint.multiplier) + constraint.constant;
+						trailing = constraint.viewTwo.getBounds().x + (int)(constraint.viewTwo.getBounds().getWidth() / 2.0 * constraint.multiplier) + constraint.constant;
 						break;
 
 					case trailing:
-						trailing = constraint.viewTwo.getBounds().x + (int)(constraint.viewTwo.getPreferredSize().getWidth() * constraint.multiplier) + constraint.constant;
+						trailing = constraint.viewTwo.getBounds().x + (int)(constraint.viewTwo.getBounds().getWidth() * constraint.multiplier) + constraint.constant;
 						break;
 
 					default:
@@ -675,13 +658,13 @@ public class LayoutEngine
 				}
 
 				constraint.viewOne.setBounds(constraint.viewOne.getBounds().x, constraint.viewOne.getBounds().y, trailing - constraint.viewOne.getBounds().x, constraint.viewOne.getBounds().height);
-				attributesSatisfied.add(LayoutAttribute.trailing);
+				attributesSatisfied.add(new LayoutAttribute[] {LayoutAttribute.trailing, constraint.attributeTwo});
 				break;
 			}
 
 			case width:
 			{
-				if ((attributesSatisfied.contains(LayoutAttribute.leading) || attributesSatisfied.contains(LayoutAttribute.centerX)) && attributesSatisfied.contains(LayoutAttribute.trailing))
+				if ((contains(attributesSatisfied, LayoutAttribute.leading) || contains(attributesSatisfied, LayoutAttribute.centerX)) && contains(attributesSatisfied, LayoutAttribute.trailing))
 				{
 					System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  You have already specified (.leading or .centerX) and .trailing.  Setting .width would break the constraints");
 					break;
@@ -691,7 +674,7 @@ public class LayoutEngine
 				switch (constraint.attributeTwo)
 				{
 					case width:
-						width = constraint.viewTwo.getBounds().x + (int)(constraint.viewTwo.getPreferredSize().getWidth() * constraint.multiplier) + constraint.constant;
+						width = constraint.viewTwo.getBounds().x + (int)(constraint.viewTwo.getBounds().getWidth() * constraint.multiplier) + constraint.constant;
 
 						if (constraint.relation == LayoutRelation.greaterThanOrEqual)
 						{
@@ -703,8 +686,27 @@ public class LayoutEngine
 						}
 						break;
 
+					case height:
+						if (constraint.viewOne == constraint.viewTwo)
+						{
+							if (contains(attributesSatisfied, LayoutAttribute.height) || (contains(attributesSatisfied, LayoutAttribute.top) && contains(attributesSatisfied, LayoutAttribute.bottom)))
+							{
+								width = constraint.viewOne.getHeight();
+							}
+							else
+							{
+								//Needs another chance to get the height made up
+								constraint.hasBeenProcessed = false;
+							}
+						}
+						else
+						{
+							width = constraint.viewTwo.getHeight();
+						}
+						break;
+
 					default:
-						System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  .width can only be constrained to .width");
+						System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  .width can only be constrained to .width or .height");
 						break;
 				}
 
@@ -714,14 +716,21 @@ public class LayoutEngine
 					break;
 				}
 
-				constraint.viewOne.setBounds(constraint.viewOne.getBounds().x, constraint.viewOne.getBounds().y, width, constraint.viewOne.getBounds().height);
-				attributesSatisfied.add(LayoutAttribute.width);
+				if (contains(attributesSatisfied, LayoutAttribute.trailing))
+				{
+					constraint.viewOne.setBounds(constraint.viewOne.getBounds().x - width, constraint.viewOne.getBounds().y, width, constraint.viewOne.getBounds().height);
+				}
+				else
+				{
+					constraint.viewOne.setBounds(constraint.viewOne.getBounds().x, constraint.viewOne.getBounds().y, width, constraint.viewOne.getBounds().height);
+				}
+				attributesSatisfied.add(new LayoutAttribute[] {LayoutAttribute.width, constraint.attributeTwo});
 				break;
 			}
 
 			case height:
 			{
-				if ((attributesSatisfied.contains(LayoutAttribute.top) || attributesSatisfied.contains(LayoutAttribute.centerY)) && attributesSatisfied.contains(LayoutAttribute.bottom))
+				if ((contains(attributesSatisfied, LayoutAttribute.top) || contains(attributesSatisfied, LayoutAttribute.centerY)) && contains(attributesSatisfied, LayoutAttribute.bottom))
 				{
 					System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  You have already specified (.top or .centerY) and .bottom.  Setting .height would break the constraints");
 					break;
@@ -731,7 +740,7 @@ public class LayoutEngine
 				switch (constraint.attributeTwo)
 				{
 					case height:
-						height = constraint.viewTwo.getBounds().y + (int)(constraint.viewTwo.getPreferredSize().getHeight() * constraint.multiplier) + constraint.constant;
+						height = constraint.viewTwo.getBounds().y + (int)(constraint.viewTwo.getBounds().getHeight() * constraint.multiplier) + constraint.constant;
 						if (constraint.relation == LayoutRelation.greaterThanOrEqual)
 						{
 							height = max(height, constraint.viewOne.getPreferredSize().height);
@@ -741,6 +750,26 @@ public class LayoutEngine
 							height = Integer.min(height, constraint.viewOne.getPreferredSize().height);
 						}
 						break;
+
+					case width:
+					{
+						if (constraint.viewOne == constraint.viewTwo)
+						{
+							if (contains(attributesSatisfied, LayoutAttribute.width) || (contains(attributesSatisfied, LayoutAttribute.leading) && contains(attributesSatisfied, LayoutAttribute.trailing)))
+							{
+								height = constraint.viewOne.getWidth();
+							}
+							else
+							{
+								//Needs another chance to get the width made up
+								constraint.hasBeenProcessed = false;
+							}
+						}
+						else
+						{
+							height = constraint.viewTwo.getHeight();
+						}
+					}
 
 					default:
 						System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  .height can only be constrained to .height");
@@ -753,14 +782,21 @@ public class LayoutEngine
 					break;
 				}
 
-				constraint.viewOne.setBounds(constraint.viewOne.getBounds().x, constraint.viewOne.getBounds().y, constraint.viewOne.getBounds().width, height);
-				attributesSatisfied.add(LayoutAttribute.height);
+				if (contains(attributesSatisfied, LayoutAttribute.bottom))
+				{
+					constraint.viewOne.setBounds(constraint.viewOne.getBounds().x, constraint.viewOne.getBounds().y - height, constraint.viewOne.getBounds().width, height);
+				}
+				else
+				{
+					constraint.viewOne.setBounds(constraint.viewOne.getBounds().x, constraint.viewOne.getBounds().y, constraint.viewOne.getBounds().width, height);
+				}
+				attributesSatisfied.add(new LayoutAttribute[] {LayoutAttribute.height, constraint.attributeTwo});
 				break;
 			}
 
 			case centerX:
 			{
-				if (((attributesSatisfied.contains(LayoutAttribute.trailing) || attributesSatisfied.contains(LayoutAttribute.leading)) && attributesSatisfied.contains(LayoutAttribute.width)) || (attributesSatisfied.contains(LayoutAttribute.trailing) && attributesSatisfied.contains(LayoutAttribute.leading)))
+				if (((contains(attributesSatisfied, LayoutAttribute.trailing) || contains(attributesSatisfied, LayoutAttribute.leading)) && contains(attributesSatisfied, LayoutAttribute.width)) || (contains(attributesSatisfied, LayoutAttribute.trailing) && contains(attributesSatisfied, LayoutAttribute.leading)))
 				{
 					System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  You have already specified ((.leading or .trailing) and .width) or (.leading and .trailing).  Setting .centerX would break the constraints");
 					break;
@@ -780,11 +816,11 @@ public class LayoutEngine
 						break;
 
 					case centerX:
-						centerX = constraint.viewTwo.getBounds().x + (int)(constraint.viewTwo.getPreferredSize().getWidth() / 2.0 * constraint.multiplier) + constraint.constant;
+						centerX = constraint.viewTwo.getBounds().x + (int)(constraint.viewTwo.getBounds().getWidth() / 2.0 * constraint.multiplier) + constraint.constant;
 						break;
 
 					case trailing:
-						centerX = constraint.viewTwo.getBounds().x + (int)(constraint.viewTwo.getPreferredSize().getWidth() * constraint.multiplier) + constraint.constant;
+						centerX = constraint.viewTwo.getBounds().x + (int)(constraint.viewTwo.getBounds().getWidth() * constraint.multiplier) + constraint.constant;
 						break;
 
 					default:
@@ -798,21 +834,21 @@ public class LayoutEngine
 					break;
 				}
 
-				if (attributesSatisfied.contains(LayoutAttribute.leading))
+				if (contains(attributesSatisfied, LayoutAttribute.leading))
 				{
 					constraint.viewOne.setBounds(constraint.viewOne.getBounds().x, constraint.viewOne.getBounds().y, (centerX - constraint.viewOne.getBounds().x) * 2, constraint.viewOne.getBounds().height);
 				}
-				else if (attributesSatisfied.contains(LayoutAttribute.width))
+				else if (contains(attributesSatisfied, LayoutAttribute.width))
 				{
 					constraint.viewOne.setBounds(centerX - (constraint.viewOne.getBounds().width/2), constraint.viewOne.getBounds().y, constraint.viewOne.getBounds().width, constraint.viewOne.getBounds().height);
 				}
-				attributesSatisfied.add(LayoutAttribute.centerX);
+				attributesSatisfied.add(new LayoutAttribute[] {LayoutAttribute.centerX, constraint.attributeTwo});
 				break;
 			}
 
 			case centerY:
 			{
-				if (((attributesSatisfied.contains(LayoutAttribute.top) || attributesSatisfied.contains(LayoutAttribute.bottom)) && attributesSatisfied.contains(LayoutAttribute.height)) || (attributesSatisfied.contains(LayoutAttribute.top) && attributesSatisfied.contains(LayoutAttribute.bottom)))
+				if (((contains(attributesSatisfied, LayoutAttribute.top) || contains(attributesSatisfied, LayoutAttribute.bottom)) && contains(attributesSatisfied, LayoutAttribute.height)) || (contains(attributesSatisfied, LayoutAttribute.top) && contains(attributesSatisfied, LayoutAttribute.bottom)))
 				{
 					System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  You have already specified ((.top or .bottom) and .height) or (.top and .bottom).  Setting .centerY would break the constraints");
 					break;
@@ -832,11 +868,11 @@ public class LayoutEngine
 						break;
 
 					case centerY:
-						centerY = constraint.viewTwo.getBounds().y + (int)(constraint.viewTwo.getPreferredSize().getHeight() / 2.0 * constraint.multiplier) + constraint.constant;
+						centerY = constraint.viewTwo.getBounds().y + (int)(constraint.viewTwo.getBounds().getHeight() / 2.0 * constraint.multiplier) + constraint.constant;
 						break;
 
 					case bottom:
-						centerY = constraint.viewTwo.getBounds().y + (int)(constraint.viewTwo.getPreferredSize().getHeight() * constraint.multiplier) + constraint.constant;
+						centerY = constraint.viewTwo.getBounds().y + (int)(constraint.viewTwo.getBounds().getHeight() * constraint.multiplier) + constraint.constant;
 						break;
 
 					default:
@@ -850,27 +886,28 @@ public class LayoutEngine
 					break;
 				}
 
-				if (attributesSatisfied.contains(LayoutAttribute.leading))
+				if (contains(attributesSatisfied, LayoutAttribute.leading))
 				{
 					constraint.viewOne.setBounds(constraint.viewOne.getBounds().x, constraint.viewOne.getBounds().y, constraint.viewOne.getBounds().width, (centerY - constraint.viewOne.getBounds().y) * 2);
 				}
-				else if (attributesSatisfied.contains(LayoutAttribute.width))
+				else if (contains(attributesSatisfied, LayoutAttribute.width))
 				{
 					constraint.viewOne.setBounds(constraint.viewOne.getBounds().x, centerY - (constraint.viewOne.getBounds().height/2), constraint.viewOne.getBounds().width, constraint.viewOne.getBounds().height);
 				}
-				attributesSatisfied.add(LayoutAttribute.centerX);
+				attributesSatisfied.add(new LayoutAttribute[] {LayoutAttribute.centerX, constraint.attributeTwo});
 				break;
 			}
 		}
 	}
 
-	private void processConstraintOnNullSecondView(LayoutConstraint constraint, ArrayList<LayoutAttribute> attributesSatisfied)
+	private void processConstraintOnNullSecondView(LayoutConstraint constraint, ArrayList<LayoutAttribute[]> attributesSatisfied)
 	{
+		constraint.hasBeenProcessed = true;
 		switch (constraint.attributeOne)
 		{
 			case width:
 			{
-				if ((attributesSatisfied.contains(LayoutAttribute.leading) || attributesSatisfied.contains(LayoutAttribute.centerX)) && attributesSatisfied.contains(LayoutAttribute.trailing))
+				if ((contains(attributesSatisfied, LayoutAttribute.leading) || contains(attributesSatisfied, LayoutAttribute.centerX)) && contains(attributesSatisfied, LayoutAttribute.trailing))
 				{
 					System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  You have already specified (.leading or .centerX) and .trailing.  Setting .width would break the constraints");
 					break;
@@ -893,19 +930,25 @@ public class LayoutEngine
 					break;
 				}
 
-				constraint.viewOne.setBounds(constraint.viewOne.getBounds().x, constraint.viewOne.getBounds().y, width, constraint.viewOne.getBounds().height);
-				attributesSatisfied.add(LayoutAttribute.width);
+				if (contains(attributesSatisfied, LayoutAttribute.trailing))
+				{
+					constraint.viewOne.setBounds(constraint.viewOne.getBounds().x - width, constraint.viewOne.getBounds().y, width, constraint.viewOne.getBounds().height);
+				}
+				else
+				{
+					constraint.viewOne.setBounds(constraint.viewOne.getBounds().x, constraint.viewOne.getBounds().y, width, constraint.viewOne.getBounds().height);
+				}
+				attributesSatisfied.add(new LayoutAttribute[] {LayoutAttribute.width, constraint.attributeTwo});
 				break;
 			}
 
 			case height:
 			{
-				if ((attributesSatisfied.contains(LayoutAttribute.top) || attributesSatisfied.contains(LayoutAttribute.centerY)) && attributesSatisfied.contains(LayoutAttribute.bottom))
+				if ((contains(attributesSatisfied, LayoutAttribute.top) || contains(attributesSatisfied, LayoutAttribute.centerY)) && contains(attributesSatisfied, LayoutAttribute.bottom))
 				{
 					System.out.println("Cannot satisfy constraint: " + constraint.toString() + ".  You have already specified (.top or .centerY) and .bottom.  Setting .height would break the constraints");
 					break;
 				}
-
 				int height = constraint.constant;
 				if (constraint.relation == LayoutRelation.greaterThanOrEqual)
 				{
@@ -923,7 +966,7 @@ public class LayoutEngine
 				}
 
 				constraint.viewOne.setBounds(constraint.viewOne.getBounds().x, constraint.viewOne.getBounds().y, constraint.viewOne.getBounds().width, height);
-				attributesSatisfied.add(LayoutAttribute.height);
+				attributesSatisfied.add(new LayoutAttribute[] {LayoutAttribute.height, constraint.attributeTwo});
 				break;
 			}
 
@@ -939,43 +982,14 @@ public class LayoutEngine
 	{
 		constraints.sort((o1, o2) ->
 		                 {
-			                 //Top/Leading
-			                 if (o1.attributeOne == LayoutAttribute.top)
-			                 {
-				                 if (o2.attributeOne == LayoutAttribute.top)
-				                 {
-					                 System.out.println("There are multiple constraints for .top for " + viewToConstrain.toString() + ".  AutoLayout cannot position this view.  Please check your constraints and find the one you don't want and remove it.");
-					                 System.exit(-1);
-					                 return 0;
-				                 }
-				                 return -1;
-			                 }
-			                 else if (o1.attributeOne == LayoutAttribute.leading)
+			                 //Leading/Trailing
+			                 if (o1.attributeOne == LayoutAttribute.leading)
 			                 {
 				                 if (o2.attributeOne == LayoutAttribute.leading)
 				                 {
 					                 System.out.println("There are multiple constraints for .leading for " + viewToConstrain.toString() + ".  AutoLayout cannot position this view.  Please check your constraints and find the one you don't want and remove it.");
 					                 System.exit(-1);
 					                 return 0;
-				                 }
-				                 else if (o2.attributeOne == LayoutAttribute.top)
-				                 {
-					                 return 1;
-				                 }
-				                 return -1;
-			                 }
-			                 //Bottom/Left
-			                 else if (o1.attributeOne == LayoutAttribute.bottom)
-			                 {
-				                 if (o2.attributeOne == LayoutAttribute.bottom)
-				                 {
-					                 System.out.println("There are multiple constraints for .bottom for " + viewToConstrain.toString() + ".  AutoLayout cannot position this view.  Please check your constraints and find the one you don't want and remove it.");
-					                 System.exit(-1);
-					                 return 0;
-				                 }
-				                 else if (o2.attributeOne == LayoutAttribute.top || o2.attributeOne == LayoutAttribute.leading)
-				                 {
-					                 return 1;
 				                 }
 				                 return -1;
 			                 }
@@ -987,7 +1001,36 @@ public class LayoutEngine
 					                 System.exit(-1);
 					                 return 0;
 				                 }
-				                 else if (o2.attributeOne == LayoutAttribute.top || o2.attributeOne == LayoutAttribute.leading || o2.attributeOne == LayoutAttribute.bottom)
+				                 else if (o2.attributeOne == LayoutAttribute.leading)
+				                 {
+					                 return 1;
+				                 }
+				                 return -1;
+			                 }
+			                 //Top/Bottom
+			                 else if (o1.attributeOne == LayoutAttribute.top)
+			                 {
+				                 if (o2.attributeOne == LayoutAttribute.top)
+				                 {
+					                 System.out.println("There are multiple constraints for .top for " + viewToConstrain.toString() + ".  AutoLayout cannot position this view.  Please check your constraints and find the one you don't want and remove it.");
+					                 System.exit(-1);
+					                 return 0;
+				                 }
+				                 else if (o2.attributeOne == LayoutAttribute.leading || o2.attributeOne == LayoutAttribute.trailing)
+				                 {
+					                 return 1;
+				                 }
+				                 return -1;
+			                 }
+			                 else if (o1.attributeOne == LayoutAttribute.bottom)
+			                 {
+				                 if (o2.attributeOne == LayoutAttribute.bottom)
+				                 {
+					                 System.out.println("There are multiple constraints for .bottom for " + viewToConstrain.toString() + ".  AutoLayout cannot position this view.  Please check your constraints and find the one you don't want and remove it.");
+					                 System.exit(-1);
+					                 return 0;
+				                 }
+				                 else if (o2.attributeOne == LayoutAttribute.leading || o2.attributeOne == LayoutAttribute.trailing || o2.attributeOne == LayoutAttribute.top)
 				                 {
 					                 return 1;
 				                 }
@@ -1002,11 +1045,11 @@ public class LayoutEngine
 					                 System.exit(-1);
 					                 return 0;
 				                 }
-				                 else if (o2.attributeOne != LayoutAttribute.centerY)
+				                 else if (o2.attributeOne == LayoutAttribute.leading || o2.attributeOne == LayoutAttribute.trailing || o2.attributeOne == LayoutAttribute.top || o2.attributeOne == LayoutAttribute.bottom)
 				                 {
-					                 return -1;
+					                 return 1;
 				                 }
-				                 return 1;
+				                 return -1;
 			                 }
 			                 else if (o1.attributeOne == LayoutAttribute.centerY)
 			                 {
@@ -1016,7 +1059,11 @@ public class LayoutEngine
 					                 System.exit(-1);
 					                 return 0;
 				                 }
-				                 return 1;
+				                 else if (o2.attributeOne == LayoutAttribute.leading || o2.attributeOne == LayoutAttribute.trailing || o2.attributeOne == LayoutAttribute.top || o2.attributeOne == LayoutAttribute.bottom || o2.attributeOne == LayoutAttribute.centerX)
+				                 {
+				                 	return 1;
+				                 }
+				                 return -1;
 			                 }
 			                 //Width/Height
 			                 else if (o1.attributeOne == LayoutAttribute.width)
@@ -1027,11 +1074,11 @@ public class LayoutEngine
 					                 System.exit(-1);
 					                 return 0;
 				                 }
-				                 else if (o2.attributeOne == LayoutAttribute.centerY || o2.attributeOne == LayoutAttribute.centerX || o2.attributeOne == LayoutAttribute.height)
+				                 else if (o2.attributeOne == LayoutAttribute.leading || o2.attributeOne == LayoutAttribute.trailing || o2.attributeOne == LayoutAttribute.top || o2.attributeOne == LayoutAttribute.bottom || o2.attributeOne == LayoutAttribute.centerX || o2.attributeOne == LayoutAttribute.centerY)
 				                 {
-					                 return -1;
+					                 return 1;
 				                 }
-				                 return 1;
+				                 return -1;
 			                 }
 			                 else if (o1.attributeOne == LayoutAttribute.height)
 			                 {
@@ -1041,11 +1088,11 @@ public class LayoutEngine
 					                 System.exit(-1);
 					                 return 0;
 				                 }
-				                 else if (o2.attributeOne == LayoutAttribute.centerY || o2.attributeOne == LayoutAttribute.centerX)
+				                 else if (o2.attributeOne == LayoutAttribute.leading || o2.attributeOne == LayoutAttribute.trailing || o2.attributeOne == LayoutAttribute.top || o2.attributeOne == LayoutAttribute.bottom || o2.attributeOne == LayoutAttribute.centerX || o2.attributeOne == LayoutAttribute.centerY || o2.attributeOne == LayoutAttribute.centerX)
 				                 {
-					                 return -1;
+					                 return 1;
 				                 }
-				                 return 1;
+				                 return -1;
 			                 }
 			                 else
 			                 {
@@ -1117,5 +1164,14 @@ public class LayoutEngine
 	{
 		String[] classes = object.getClass().toString().substring(6).split(Pattern.quote("."));
 		return classes[max(0, classes.length - 1)] + ":" + System.identityHashCode(object);
+	}
+
+	private boolean contains(ArrayList<LayoutAttribute[]> attributes, LayoutAttribute attribute)
+	{
+		for (LayoutAttribute[] pair : attributes)
+		{
+			if (pair[0] == attribute) return true;
+		}
+		return false;
 	}
 }
