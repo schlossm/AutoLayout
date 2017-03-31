@@ -12,17 +12,6 @@ import java.awt.event.ComponentListener;
  */
 public class ALJFrame extends JFrame implements ComponentListener
 {
-	@Override
-	public Component add(Component comp)
-	{
-		Component component = super.add(comp);
-		if (comp instanceof ALJPanel)
-		{
-			((ALJPanel) comp).layoutSubviews();
-		}
-		return component;
-	}
-
 	public ALJFrame(String title)
 	{
 		super(title);
@@ -32,19 +21,36 @@ public class ALJFrame extends JFrame implements ComponentListener
 	@Override
 	public void componentResized(ComponentEvent e)
 	{
-		if (!this.isVisible()) return;
+		if (!isVisible()) return;
+		process();
+		getContentPane().revalidate();
+		getContentPane().repaint();
 		process();
 		getContentPane().revalidate();
 		getContentPane().repaint();
 	}
 
 	@Override
-	public void componentMoved(ComponentEvent e) { }
+	public void componentMoved(ComponentEvent e)
+	{
+		if (!isVisible()) return;
+		process();
+		getContentPane().revalidate();
+		getContentPane().repaint();
+		process();
+		getContentPane().revalidate();
+		getContentPane().repaint();
+	}
 
 	@Override
 	public void componentShown(ComponentEvent e)
 	{
 		process();
+		getContentPane().revalidate();
+		getContentPane().repaint();
+		process();
+		getContentPane().revalidate();
+		getContentPane().repaint();
 	}
 
 	@Override

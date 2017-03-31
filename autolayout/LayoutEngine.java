@@ -192,7 +192,7 @@ public class LayoutEngine
 
 				if (!contains(attributesSatisfied, LayoutAttribute.leading))
 				{
-					constraint.viewOne.setBounds(trailing, constraint.viewOne.getBounds().y, constraint.viewOne.getWidth(), constraint.viewOne.getBounds().height);
+					constraint.viewOne.setBounds(trailing - constraint.viewOne.getWidth(), constraint.viewOne.getBounds().y, constraint.viewOne.getWidth(), constraint.viewOne.getBounds().height);
 				}
 				else
 				{
@@ -285,7 +285,7 @@ public class LayoutEngine
 
 				if (!contains(attributesSatisfied, LayoutAttribute.top))
 				{
-					constraint.viewOne.setBounds(constraint.viewOne.getBounds().x, bottom, constraint.viewOne.getWidth(), constraint.viewOne.getBounds().height);
+					constraint.viewOne.setBounds(constraint.viewOne.getBounds().x, bottom - constraint.viewOne.getHeight(), constraint.viewOne.getWidth(), constraint.viewOne.getBounds().height);
 				}
 				else
 				{
@@ -1036,35 +1036,6 @@ public class LayoutEngine
 				                 }
 				                 return -1;
 			                 }
-			                 //Centers
-			                 else if (o1.attributeOne == LayoutAttribute.centerX)
-			                 {
-				                 if (o2.attributeOne == LayoutAttribute.centerX)
-				                 {
-					                 System.out.println("There are multiple constraints for .centerX for " + viewToConstrain.toString() + ".  AutoLayout cannot position this view.  Please check your constraints and find the one you don't want and remove it.");
-					                 System.exit(-1);
-					                 return 0;
-				                 }
-				                 else if (o2.attributeOne == LayoutAttribute.leading || o2.attributeOne == LayoutAttribute.trailing || o2.attributeOne == LayoutAttribute.top || o2.attributeOne == LayoutAttribute.bottom)
-				                 {
-					                 return 1;
-				                 }
-				                 return -1;
-			                 }
-			                 else if (o1.attributeOne == LayoutAttribute.centerY)
-			                 {
-				                 if (o2.attributeOne == LayoutAttribute.centerY)
-				                 {
-					                 System.out.println("There are multiple constraints for .centerY for " + viewToConstrain.toString() + ".  AutoLayout cannot position this view.  Please check your constraints and find the one you don't want and remove it.");
-					                 System.exit(-1);
-					                 return 0;
-				                 }
-				                 else if (o2.attributeOne == LayoutAttribute.leading || o2.attributeOne == LayoutAttribute.trailing || o2.attributeOne == LayoutAttribute.top || o2.attributeOne == LayoutAttribute.bottom || o2.attributeOne == LayoutAttribute.centerX)
-				                 {
-				                 	return 1;
-				                 }
-				                 return -1;
-			                 }
 			                 //Width/Height
 			                 else if (o1.attributeOne == LayoutAttribute.width)
 			                 {
@@ -1074,7 +1045,7 @@ public class LayoutEngine
 					                 System.exit(-1);
 					                 return 0;
 				                 }
-				                 else if (o2.attributeOne == LayoutAttribute.leading || o2.attributeOne == LayoutAttribute.trailing || o2.attributeOne == LayoutAttribute.top || o2.attributeOne == LayoutAttribute.bottom || o2.attributeOne == LayoutAttribute.centerX || o2.attributeOne == LayoutAttribute.centerY)
+				                 else if (o2.attributeOne == LayoutAttribute.leading || o2.attributeOne == LayoutAttribute.trailing || o2.attributeOne == LayoutAttribute.top || o2.attributeOne == LayoutAttribute.bottom)
 				                 {
 					                 return 1;
 				                 }
@@ -1088,9 +1059,38 @@ public class LayoutEngine
 					                 System.exit(-1);
 					                 return 0;
 				                 }
-				                 else if (o2.attributeOne == LayoutAttribute.leading || o2.attributeOne == LayoutAttribute.trailing || o2.attributeOne == LayoutAttribute.top || o2.attributeOne == LayoutAttribute.bottom || o2.attributeOne == LayoutAttribute.centerX || o2.attributeOne == LayoutAttribute.centerY || o2.attributeOne == LayoutAttribute.centerX)
+				                 else if (o2.attributeOne == LayoutAttribute.leading || o2.attributeOne == LayoutAttribute.trailing || o2.attributeOne == LayoutAttribute.top || o2.attributeOne == LayoutAttribute.bottom || o2.attributeOne == LayoutAttribute.width)
 				                 {
 					                 return 1;
+				                 }
+				                 return -1;
+			                 }
+			                 //Centers
+			                 else if (o1.attributeOne == LayoutAttribute.centerX)
+			                 {
+				                 if (o2.attributeOne == LayoutAttribute.centerX)
+				                 {
+					                 System.out.println("There are multiple constraints for .centerX for " + viewToConstrain.toString() + ".  AutoLayout cannot position this view.  Please check your constraints and find the one you don't want and remove it.");
+					                 System.exit(-1);
+					                 return 0;
+				                 }
+				                 else if (o2.attributeOne == LayoutAttribute.leading || o2.attributeOne == LayoutAttribute.trailing || o2.attributeOne == LayoutAttribute.top || o2.attributeOne == LayoutAttribute.bottom || o2.attributeOne == LayoutAttribute.width || o2.attributeOne == LayoutAttribute.height)
+				                 {
+					                 return 1;
+				                 }
+				                 return -1;
+			                 }
+			                 else if (o1.attributeOne == LayoutAttribute.centerY)
+			                 {
+				                 if (o2.attributeOne == LayoutAttribute.centerY)
+				                 {
+					                 System.out.println("There are multiple constraints for .centerY for " + viewToConstrain.toString() + ".  AutoLayout cannot position this view.  Please check your constraints and find the one you don't want and remove it.");
+					                 System.exit(-1);
+					                 return 0;
+				                 }
+				                 else if (o2.attributeOne == LayoutAttribute.leading || o2.attributeOne == LayoutAttribute.trailing || o2.attributeOne == LayoutAttribute.top || o2.attributeOne == LayoutAttribute.bottom || o2.attributeOne == LayoutAttribute.centerX || o2.attributeOne == LayoutAttribute.width || o2.attributeOne == LayoutAttribute.height)
+				                 {
+				                 	return 1;
 				                 }
 				                 return -1;
 			                 }
