@@ -1,9 +1,16 @@
-# AutoLayout
+#AutoLayout
 A fully fledged auto layout engine for Java's Swing platform
 
-Current status: **Beta 1.2**
+Current status: **Beta 1.4**
 
 Designed to be used in place of Swing's `LayoutManager` and `LayoutManager2` classes.  AutoLayout provides full scale custom layouts with built in automated resizing.
+
+##Release Notes
+__**Beta 1.4**__
+
+* Major updates to code to remove package issues.  It was used in another project and those changes overwrote by mistake
+* Added more comments to classes for better understanding
+* Added ALJTable to codebase.  This class and it's related files are not yet commented.  This will come over the next week. **ALJTable is currently in beta**
 
 ##Beta Notes
 

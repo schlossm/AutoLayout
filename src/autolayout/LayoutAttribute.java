@@ -1,8 +1,6 @@
-package uikit.autolayout;
+package autolayout;
 
 /**
- * Created by michaelschloss on 1/26/17.
- *
  * The part of the object’s visual representation that should be used to get the value for the constraint.
  */
 public enum LayoutAttribute

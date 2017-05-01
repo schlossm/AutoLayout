@@ -1,4 +1,4 @@
-package uikit.autolayout.uiobjects;
+package autolayout.uiobjects;
 
 import javax.swing.*;
 import java.awt.*;
@@ -6,10 +6,9 @@ import java.awt.event.ComponentEvent;
 import java.awt.event.ComponentListener;
 
 /**
- * Created by michaelschloss on 2/1/17.
- *
- * Custom subclass of JFrame.  Subclass ALJFrame to get automatic AutoLayout inheritance.
+ * Use ALJFrame in place of JFrame to inherit AutoLayout properties on JFrames.  This class is subclassable, but can be used as is.
  */
+@SuppressWarnings({"unused"})
 public class ALJFrame extends JFrame implements ComponentListener
 {
 	public ALJFrame(String title)
@@ -18,10 +17,9 @@ public class ALJFrame extends JFrame implements ComponentListener
 		addComponentListener(this);
 	}
 
-	@Override
-	public void componentResized(ComponentEvent e)
+	private void layoutSubviews()
 	{
-		if (!isVisible()) return;
+		if (!isVisible()) { return; }
 		process();
 		getContentPane().revalidate();
 		getContentPane().repaint();
@@ -31,15 +29,15 @@ public class ALJFrame extends JFrame implements ComponentListener
 	}
 
 	@Override
+	public void componentResized(ComponentEvent e)
+	{
+		layoutSubviews();
+	}
+
+	@Override
 	public void componentMoved(ComponentEvent e)
 	{
-		if (!isVisible()) return;
-		process();
-		getContentPane().revalidate();
-		getContentPane().repaint();
-		process();
-		getContentPane().revalidate();
-		getContentPane().repaint();
+		layoutSubviews();
 	}
 
 	@Override
@@ -63,11 +61,11 @@ public class ALJFrame extends JFrame implements ComponentListener
 			component.setBounds(0, component.getBounds().y, getContentPane().getWidth(), getContentPane().getHeight() - component.getBounds().y);
 			if (component instanceof ALJPanel)
 			{
-				((ALJPanel)component).layoutSubviews();
+				((ALJPanel) component).layoutSubviews();
 			}
 			else if (component instanceof JPanel)
 			{
-				((ComponentListener)component).componentResized(null);
+				((ComponentListener) component).componentResized(null);
 			}
 		}
 	}

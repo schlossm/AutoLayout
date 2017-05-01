@@ -1,18 +1,35 @@
-package uikit.autolayout.uiobjects;
+package autolayout.uiobjects;
 
-import uikit.autolayout.Constrainable;
-import uikit.autolayout.LayoutConstraint;
-import uikit.autolayout.LayoutEngine;
+import autolayout.Constrainable;
+import autolayout.LayoutConstraint;
+import autolayout.LayoutEngine;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ComponentListener;
 import java.util.ArrayList;
 
-@SuppressWarnings("unchecked")
+/**
+ * ALJPanel is a subclass of JLayeredPane, and provides automatic inheritance of AutoLayout support.  This class is subclassable, but can be used as is.
+ * <p>
+ * When adding views, you call <code>addConstraints(_:)</code> to add a constraint for processing.
+ * <p>
+ * Every view on screen needs a full set of layout constraints, or <code>LayoutEngine</code> will not be able to layout the view.  Some views, such as JLabel provide automatic preferredSizes, and do not need explicit constraints for specifying width and height, but these constraints can be added without issue.
+ * <p>
+ * If you attempt to add <code>Components</code> that are not of type <code>JComponent</code>, <code>LayoutEngine</code> will crash as these are not Swing compatible views.
+ * <p>
+ * <b>Beta Notes:</b>
+ * <p>
+ * Currently, the panel's compression resistance is not honored as each constraint is given full priority.  The calculated height and width are managed however, and can be used to determine width and height after a layout pass.
+ */
+@SuppressWarnings({"unchecked", "unused"})
 public class ALJPanel extends JLayeredPane implements Constrainable
 {
 	private final ArrayList<LayoutConstraint> _constraints = new ArrayList<>();
+	private int panelCompressionWidth = 750;
+	private int panelCompressionHeight = 750;
+	private int calculatedHeight = 0;
+	private int calculatedWidth = 0;
 
 	public ALJPanel()
 	{
@@ -21,12 +38,6 @@ public class ALJPanel extends JLayeredPane implements Constrainable
 		setBackground(Color.white);
 		setOpaque(true);
 	}
-
-	private int panelCompressionWidth = 750;
-	private int panelCompressionHeight = 750;
-
-	private int calculatedHeight = 0;
-	private int calculatedWidth = 0;
 
 	@Override
 	public void addConstraint(LayoutConstraint constraint)
@@ -55,7 +66,7 @@ public class ALJPanel extends JLayeredPane implements Constrainable
 
 	public void removeConstraintsFor(JComponent component)
 	{
-		for (LayoutConstraint constraint : (ArrayList<LayoutConstraint>)_constraints.clone())
+		for (LayoutConstraint constraint : (ArrayList<LayoutConstraint>) _constraints.clone())
 		{
 			if (constraint.viewOne == component)
 			{
@@ -102,8 +113,13 @@ public class ALJPanel extends JLayeredPane implements Constrainable
 			}
 			else if (component instanceof JPanel)
 			{
-				((ComponentListener) component).componentResized(null);
+				try
+				{
+					((ComponentListener) component).componentResized(null);
+				}
+				catch (Exception ignored) { }
 				component.revalidate();
+
 			}
 			component.repaint();
 		}
