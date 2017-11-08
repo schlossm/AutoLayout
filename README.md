@@ -1,20 +1,18 @@
-#AutoLayout
+# AutoLayout
 A fully fledged auto layout engine for Java's Swing platform
 
-Current status: **Beta 1.4**
+Current status: **Beta 1.5**
 
 Designed to be used in place of Swing's `LayoutManager` and `LayoutManager2` classes.  AutoLayout provides full scale custom layouts with built in automated resizing.
 
-##Release Notes
-__**Beta 1.4**__
+## Release Notes
+__**Beta 1.5**__
 
-* Major updates to code to remove package issues.  It was used in another project and those changes overwrote by mistake
-* Added more comments to classes for better understanding
-* Added ALJTable to codebase.  This class and it's related files are not yet commented.  This will come over the next week. **ALJTable is currently in beta**
+*
 
-##Beta Notes
+## Beta Notes
 
-###Current Limitations
+### Current Limitations
 **This project is in Beta.**  Many things work, and many things do not.
 
 Resizing on macOS is slightly laggy.  That's Swings own doing and nothing I can fix.  However, the layout engine renders immediately and efficiently. **Note:** This has changed as of Java 1.9.  It bring about many improvement to resizing windows in macOS that makes it smooth.
@@ -30,7 +28,7 @@ Resizing on macOS is slightly laggy.  That's Swings own doing and nothing I can 
 
 * Constraining on just centerX and centerY is having some difficulties showing the view on screen.  Currently working on getting that fixed.
 
-###Things that work
+### Things that work
 * Can constrain to any part of a view.  Can constrain to null second view as long as first attribute is width or height.
 
 * Error checking for duplicate constraints, and illegal single constraints.  Error checking on illegal groups of constraints is there, but it requires more testing.
@@ -39,7 +37,7 @@ Resizing on macOS is slightly laggy.  That's Swings own doing and nothing I can 
 
 * `LayoutEngine` attempts to respect preferredSize if `.greaterThanOrEqual` or `.lessThanOrEqual` is used as the relation.
 
-##Use
+## Use
 
 AutoLayout was designed to mimic Apple'sⓒ NSAutoLayout rendering engine.
 
@@ -50,7 +48,7 @@ All you need to do is use an ALJPanel instance instead of JPanel.  ALJPanel is a
 2. That's it.  `ALJPanel` will render itself as needed.  The `layoutSubviews()` method in `ALJPanel` is provided to you to explicitly relayout the views on screen after removing or adding constraints.
 
 
-##Disclaimers
+## Disclaimers
 This project is in beta.  It is not intended for production builds, unless you have had major experience developing on iOS, and know your way around the layout engine.
 
 I will update this project as frequently as I can.
