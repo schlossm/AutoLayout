@@ -1,4 +1,8 @@
-package autolayout.ALJTable;
+/*
+ * Copyright (c) 2017 Michael Schloss.  All rights reserved.
+ */
+
+package autolayout.uiobjects.aljtable;
 
 import autolayout.LayoutAttribute;
 import autolayout.LayoutConstraint;

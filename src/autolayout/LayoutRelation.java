@@ -1,7 +1,11 @@
+/*
+ * Copyright (c) 2017 Michael Schloss.  All rights reserved.
+ */
+
 package autolayout;
 
 /**
- * The relation between the first attribute and the modified second attribute in a constraint.
+ * The relation between the first and second attributes in a constraint.
  */
 public enum LayoutRelation
 {
@@ -10,17 +14,13 @@ public enum LayoutRelation
 	@Override
 	public String toString()
 	{
-		if (this == lessThanOrEqual)
+		switch (this)
 		{
-			return "<=";
-		}
-		else if (this == equal)
-		{
-			return "==";
-		}
-		else if (this == greaterThanOrEqual)
-		{
-			return ">=";
+			case lessThanOrEqual: return "<=";
+
+			case equal: return "==";
+
+			case greaterThanOrEqual: return ">=";
 		}
 		return "NULL";
 	}

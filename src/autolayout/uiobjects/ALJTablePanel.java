@@ -1,33 +1,30 @@
+/*
+ * Copyright (c) 2017 Michael Schloss.  All rights reserved.
+ */
+
 package autolayout.uiobjects;
 
-import autolayout.ALJTable.ALJTable;
-import autolayout.ALJTable.ALJTableDataSource;
-import autolayout.ALJTable.ALJTableDelegate;
+import autolayout.uiobjects.aljtable.*;
 import autolayout.LayoutAttribute;
 import autolayout.LayoutConstraint;
 import autolayout.LayoutRelation;
 
 import java.awt.*;
 
+@SuppressWarnings("unused")
 abstract public class ALJTablePanel extends ALJPanel implements ALJTableDataSource, ALJTableDelegate
 {
-	protected final ALJTable table;
+	public final ALJTable table;
 
-	protected ALJTablePanel()
+	public ALJTablePanel()
 	{
-		setBackground(Color.white);
-		setPreferredSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
-
-		setBackground(Color.white);
-		setOpaque(true);
-
+		super();
 		table = new ALJTable();
-		table.heightForRow = 66;
+		table.heightForRow = 88;
 		table.dataSource = this;
 		table.delegate = this;
 
 		add(table);
-
 		addConstraint(new LayoutConstraint(table, LayoutAttribute.leading, LayoutRelation.equal, this, LayoutAttribute.leading, 1.0, 0));
 		addConstraint(new LayoutConstraint(table, LayoutAttribute.top, LayoutRelation.equal, this, LayoutAttribute.top, 1.0, 0));
 		addConstraint(new LayoutConstraint(table, LayoutAttribute.trailing, LayoutRelation.equal, this, LayoutAttribute.trailing, 1.0, 0));
@@ -35,19 +32,18 @@ abstract public class ALJTablePanel extends ALJPanel implements ALJTableDataSour
 	}
 
 	@Override
+	public Component add(Component comp)
+	{
+		if (getComponents().length != 0) { System.err.println("Adding components to ALJTablePanel will cause improper rendering issues"); }
+		return super.add(comp);
+	}
+
+	@Override
 	public void layoutSubviews()
 	{
 		super.layoutSubviews();
-		if (!table.isLoaded())
-		{
-			table.reloadData();
-			table.layoutSubviews();
-			repaint();
-		}
-		else
-		{
-			table.layoutSubviews();
-			repaint();
-		}
+		if (!table.isLoaded()) { table.reloadData(); }
+		table.layoutSubviews();
+		repaint();
 	}
 }

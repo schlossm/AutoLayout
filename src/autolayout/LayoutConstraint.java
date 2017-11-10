@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2017 Michael Schloss.  All rights reserved.
+ */
+
 package autolayout;
 
 import java.awt.*;

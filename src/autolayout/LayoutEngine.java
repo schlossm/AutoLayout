@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2017 Michael Schloss.  All rights reserved.
+ */
+
 package autolayout;
 
 import javax.swing.*;
@@ -29,7 +33,7 @@ import static java.lang.Integer.max;
 @SuppressWarnings("ConstantConditions")
 public class LayoutEngine
 {
-	public static final LayoutEngine current = new LayoutEngine();
+	public static final LayoutEngine active = new LayoutEngine();
 
 	private LayoutEngine() { }
 
@@ -44,7 +48,7 @@ public class LayoutEngine
 		return returnString;
 	}
 
-	public void processConstraintsIn(Constrainable view)
+	public void processConstraintsIn(LayoutEngineConstrainable view)
 	{
 		JComponent component;
 		try
@@ -144,8 +148,8 @@ public class LayoutEngine
 			map.remove(viewToConstrain);
 		}
 
-		((Constrainable) parent).setCalculatedHeight(height);
-		((Constrainable) parent).setCalculatedWidth(width);
+		((LayoutEngineConstrainable) parent).setCalculatedHeight(height);
+		((LayoutEngineConstrainable) parent).setCalculatedWidth(width);
 	}
 
 	private void processConstraintOnParent(LayoutConstraint constraint, ArrayList<LayoutAttribute[]> attributesSatisfied, Component parent)

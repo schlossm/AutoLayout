@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2017 Michael Schloss.  All rights reserved.
+ */
+
 package autolayout.uiobjects;
 
 import javax.swing.*;
@@ -6,7 +10,7 @@ import java.awt.event.ComponentEvent;
 import java.awt.event.ComponentListener;
 
 /**
- * Use ALJFrame in place of JFrame to inherit AutoLayout properties on JFrames.  This class is subclassable, but can be used as is.
+ * ALJFrame includes built-in support for AutoLayout.  This class is subclassable.
  */
 @SuppressWarnings({"unused"})
 public class ALJFrame extends JFrame implements ComponentListener
@@ -35,10 +39,7 @@ public class ALJFrame extends JFrame implements ComponentListener
 	}
 
 	@Override
-	public void componentMoved(ComponentEvent e)
-	{
-		layoutSubviews();
-	}
+	public void componentMoved(ComponentEvent e) { }
 
 	@Override
 	public void componentShown(ComponentEvent e)

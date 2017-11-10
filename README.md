@@ -15,8 +15,6 @@ __**Beta 1.5**__
 ### Current Limitations
 **This project is in Beta.**  Many things work, and many things do not.
 
-Resizing on macOS is slightly laggy.  That's Swings own doing and nothing I can fix.  However, the layout engine renders immediately and efficiently. **Note:** This has changed as of Java 1.9.  It bring about many improvement to resizing windows in macOS that makes it smooth.
-
 * All constraints are processed at each resizing.  I have not yet implemented efficient resizing of constraints.
 	* As a result, the `hasBeenProcessed` attribute of `LayoutConstraint` is set, but never read.  This will change once I implement more efficient constraint processing.
 
